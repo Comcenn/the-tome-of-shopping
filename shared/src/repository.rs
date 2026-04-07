@@ -7,4 +7,6 @@ pub trait ShoppingListRepository: Send + Sync {
     async fn list_items(&self) -> anyhow::Result<Vec<Item>>;
 
     async fn add_item(&self, item: CreateItem) -> anyhow::Result<()>;
+
+    async fn remove_item(&self, item_id: i32) -> anyhow::Result<()>;
 }

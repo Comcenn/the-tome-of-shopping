@@ -4,7 +4,7 @@ use anyhow::Ok;
 use async_trait::async_trait;
 use fs2::FileExt;
 use rust_decimal::dec;
-use shared::{CreateItem, Item, ShoppingListRepository};
+use shared::{CreateItem, Item, ShoppingListRepository, TomeError};
 use tokio::sync::RwLock;
 
 #[derive(Clone)]
@@ -20,7 +20,11 @@ impl ShoppingListRepository for FakeRepo {
         ])
     }
 
-    async fn add_item(&self, item: CreateItem) -> anyhow::Result<()> {
+    async fn add_item(&self, _item: CreateItem) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    async fn remove_item(&self, _item_id: i32) -> anyhow::Result<()> {
         Ok(())
     }
 }
@@ -105,10 +109,9 @@ impl ShoppingListRepository for FileBackedStore {
         if let Some(existing) = items.iter_mut().find(|i| i.name == item.name) {
             existing.quantity += item.quantity;
         } else {
-
             let next_id = items.iter().map(|i| i.id).max().unwrap_or(0) + 1;
             let next_order = items.iter().map(|i| i.item_order).max().unwrap_or(0) + 1;
-            
+
             let new_item = Item::new(next_id, next_order, item.name, item.price, item.quantity);
 
             items.push(new_item);
@@ -133,6 +136,26 @@ impl ShoppingListRepository for FileBackedStore {
         *cache = fresh.clone();
 
         Ok(fresh)
+    }
+
+    async fn remove_item(&self, item_id: i32) -> anyhow::Result<()> {
+        let mut fresh = self.load_fresh().await;
+
+        let index = fresh
+            .iter()
+            .position(|item| item.id == item_id)
+            .ok_or_else(|| {
+                TomeError::new(format!("cannot find item with 'id' of '{}'", item_id))
+            })?;
+
+        fresh.remove(index);
+
+        self.persist(&fresh).await;
+
+        let mut cache = self.items.write().await;
+        *cache = fresh;
+
+        Ok(())
     }
 }
 
@@ -159,7 +182,7 @@ mod tests {
     }
 
     fn sample_create_item(id: i32) -> CreateItem {
-        CreateItem::new(format!("Item{}", id),dec!(10.99), 1)
+        CreateItem::new(format!("Item{}", id), dec!(10.99), 1)
     }
 
     #[tokio::test]
@@ -233,6 +256,27 @@ mod tests {
         let items = store.list_items().await.unwrap();
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].id, 99);
+    }
+
+    #[tokio::test]
+    async fn remove_item_removes_item_from_store() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("store.json");
+
+        let store = FileBackedStore::new(&path).await;
+
+        // Write directly to disk, bypassing cache
+        let injected = vec![sample_item(99), sample_item(10)];
+        fs::write(&path, serde_json::to_vec(&injected).unwrap())
+            .await
+            .unwrap();
+        // item ids match the number passed into 'sample_item()'
+        let result = store.remove_item(10).await;
+        assert!(result.is_ok());
+
+        let items = store.list_items().await.unwrap();
+
+        assert_eq!(items.len(), 1)
     }
 
     #[tokio::test]

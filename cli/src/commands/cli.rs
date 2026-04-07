@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::Parser;
 
 use crate::commands::shopping::ShoppingCommands;
 
@@ -6,11 +6,5 @@ use crate::commands::shopping::ShoppingCommands;
 #[command(name = "shopping-cli", version, about = "A shopping list CLI")]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Commands,
-}
-
-#[derive(Debug, Subcommand)]
-pub enum Commands {
-    #[command(subcommand)]
-    Shopping(ShoppingCommands),
+    pub command: ShoppingCommands,
 }

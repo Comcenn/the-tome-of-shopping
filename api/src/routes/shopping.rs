@@ -1,12 +1,12 @@
 use axum::{
     Router,
-    routing::{get, post},
+    routing::{delete, get, post},
 };
 use shared::ShoppingListRepository;
 use state::AppState;
 
 use crate::{
-    handlers::shopping::{add_item_handler, list_items_handler},
+    handlers::shopping::{add_item_handler, list_items_handler, remove_item_handler},
     state,
 };
 
@@ -17,5 +17,6 @@ where
     Router::new()
         .route("/", get(list_items_handler::<R>))
         .route("/items", post(add_item_handler::<R>))
+        .route("/items/{item_id}", delete(remove_item_handler::<R>))
         .with_state(state)
 }

@@ -15,7 +15,8 @@ pub async fn run_async_executor<R: ShoppingListRepository>(
     io::stdout().flush().unwrap();
 
     while let Some(line) = rx.recv().await {
-        let args = std::iter::once("repl").chain(line.split_whitespace());
+        let parts = shlex::split(&line).unwrap_or_default();
+        let args = std::iter::once("repl").chain(parts.iter().map(|part| part.as_str()));
         match Cli::try_parse_from(args) {
             Ok(cmd) => {
                 if let Some(page) = handle_command(client, cmd).await? {

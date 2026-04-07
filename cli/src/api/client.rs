@@ -45,14 +45,34 @@ impl ShoppingListRepository for ShoppingListClient {
     async fn add_item(&self, item: CreateItem) -> anyhow::Result<()> {
         let url = self.base_url.join("shopping/items")?;
 
-        self.web_client.post(url).json(&item).send().await?.error_for_status()?;
+        self.web_client
+            .post(url)
+            .json(&item)
+            .send()
+            .await?
+            .error_for_status()?;
+        Ok(())
+    }
+
+    async fn remove_item(&self, item_id: i32) -> anyhow::Result<()> {
+        let url = self.base_url.join(&format!("shopping/items/{}", item_id))?;
+
+        self.web_client
+            .delete(url)
+            .send()
+            .await?
+            .error_for_status()?;
+
         Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use httpmock::{Method::{GET, POST}, MockServer};
+    use httpmock::{
+        Method::{DELETE, GET, POST},
+        MockServer,
+    };
     use rust_decimal::dec;
 
     use super::*;
@@ -99,7 +119,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_add_item_success(){
+    async fn test_add_item_success() {
         let server = MockServer::start();
 
         let mock = server.mock(|when, then| {
@@ -119,7 +139,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_add_item_returns_err_on_500(){
+    async fn test_add_item_returns_err_on_500() {
         let server = MockServer::start();
 
         let mock = server.mock(|when, then| {
@@ -132,6 +152,42 @@ mod tests {
         let client = ShoppingListClient::build(&server.base_url()).unwrap();
 
         let result = client.add_item(test_item).await;
+
+        assert!(result.is_err());
+
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_remove_item_success() {
+        let server = MockServer::start();
+
+        let mock = server.mock(|when, then| {
+            when.method(DELETE).path("/shopping/items/11");
+            then.status(204);
+        });
+
+        let client = ShoppingListClient::build(&server.base_url()).unwrap();
+
+        let result = client.remove_item(11).await;
+
+        assert!(result.is_ok());
+
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_remove_item_returns_err_on_500() {
+        let server = MockServer::start();
+
+        let mock = server.mock(|when, then| {
+            when.method(DELETE).path("/shopping/items/11");
+            then.status(500);
+        });
+
+        let client = ShoppingListClient::build(&server.base_url()).unwrap();
+
+        let result = client.remove_item(11).await;
 
         assert!(result.is_err());
 

@@ -5,8 +5,16 @@ use rust_decimal::Decimal;
 pub enum ShoppingCommands {
     List,
     Add {
+        #[arg(long)]
         name: String,
+
+        #[arg(long)]
         price: Decimal,
-        quantity: i32
-    }
+
+        #[arg(long)]
+        quantity: i32,
+    },
+    Remove {
+        item_id: i32,
+    },
 }

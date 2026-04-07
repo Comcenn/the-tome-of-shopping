@@ -27,9 +27,8 @@ impl Page for ListPage {
     }
 }
 
-
 pub struct AddItemPage {
-    pub items: Vec<Item>
+    pub items: Vec<Item>,
 }
 
 impl AddItemPage {
@@ -39,6 +38,33 @@ impl AddItemPage {
 }
 
 impl Page for AddItemPage {
+    fn render(&self) -> String {
+        let mut out = String::new();
+        out.push_str("\n========Updated Shopping List========\n");
+        out.push_str("Id|Name|Price|Quantity|Order\n");
+        for item in &self.items {
+            out.push_str(&format!(
+                "{}|{}|{}|{}|{}\n",
+                item.id, item.name, item.price, item.quantity, item.item_order
+            ));
+        }
+        out.push_str("==========End of List==========\n");
+
+        out
+    }
+}
+
+pub struct RemoveItemPage {
+    pub items: Vec<Item>,
+}
+
+impl RemoveItemPage {
+    pub fn new(items: Vec<Item>) -> Self {
+        Self { items }
+    }
+}
+
+impl Page for RemoveItemPage {
     fn render(&self) -> String {
         let mut out = String::new();
         out.push_str("\n========Updated Shopping List========\n");

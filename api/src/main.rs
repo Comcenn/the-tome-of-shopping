@@ -1,11 +1,6 @@
 use std::sync::Arc;
 
-use api::{
-    config::Config,
-    create_app,
-    repositories::{FakeRepo, FileBackedStore},
-    state::AppState,
-};
+use api::{config::Config, create_app, repositories::FileBackedStore, state::AppState};
 use tokio::signal;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 

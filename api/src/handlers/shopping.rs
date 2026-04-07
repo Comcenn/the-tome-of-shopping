@@ -1,4 +1,8 @@
-use axum::{Json, extract::State, http::StatusCode};
+use axum::{
+    Json,
+    extract::{Path, State},
+    http::StatusCode,
+};
 use shared::{CreateItem, Item, ShoppingListRepository};
 
 use crate::{
@@ -29,6 +33,23 @@ where
     controller.add_item(payload).await.map_err(|e| ApiError {
         message: e.to_string(),
     })?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn remove_item_handler<R>(
+    State(state): State<AppState<R>>,
+    Path(item_id): Path<i32>,
+) -> Result<StatusCode>
+where
+    R: ShoppingListRepository + Clone + Send + Sync + 'static,
+{
+    let controller = ShoppingListController::new(state.repo.clone());
+    controller
+        .remove_item(item_id)
+        .await
+        .map_err(|e| ApiError {
+            message: e.to_string(),
+        })?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -155,8 +176,25 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    }
 
-        // If FakeRepo had side effects, we would assert them here.
-        // For now, success status is enough to prove the handler executed.
+    #[tokio::test]
+    async fn remove_item_calls_repository() {
+        // Use FakeRepo which always returns Ok(()). We just verify the handler succeeds.
+        let repo = Arc::new(FakeRepo);
+        let state = AppState::new(Default::default(), repo.clone());
+        let app = create_app(state);
+
+        let response = app
+            .oneshot(
+                Request::delete("/shopping/items/1")
+                    .header("content-type", "application/json")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
     }
 }

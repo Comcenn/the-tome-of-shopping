@@ -407,6 +407,7 @@ dependencies = [
  "rust_decimal",
  "serde",
  "shared",
+ "shlex",
  "tokio",
  "url",
 ]
