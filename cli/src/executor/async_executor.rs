@@ -22,7 +22,7 @@ pub async fn run_async_executor<R: ShoppingListRepository>(
                     println!("{}", page.render());
                     println!();
                 }
-            },
+            }
             Err(e) => eprintln!("{e}"),
         }
         print!("shopping-list> ");

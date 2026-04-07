@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use shared::{Item, ShoppingListRepository};
+use shared::{CreateItem, Item, ShoppingListRepository};
 
 pub struct ShoppingListController<R>
 where
@@ -19,6 +19,11 @@ where
 
     pub async fn list_items(&self) -> anyhow::Result<Vec<Item>> {
         self.repo.list_items().await
+    }
+
+    pub async fn add_item(&self, item: CreateItem) -> anyhow::Result<()> {
+        self.repo.add_item(item).await?;
+        Ok(())
     }
 }
 

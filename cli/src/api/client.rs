@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use reqwest::Client;
-use shared::{Item, ShoppingListRepository};
+use shared::{CreateItem, Item, ShoppingListRepository};
 use url::Url;
 
 pub struct ShoppingListClient {
@@ -41,11 +41,18 @@ impl ShoppingListRepository for ShoppingListClient {
 
         Ok(items)
     }
+
+    async fn add_item(&self, item: CreateItem) -> anyhow::Result<()> {
+        let url = self.base_url.join("shopping/items")?;
+
+        self.web_client.post(url).json(&item).send().await?.error_for_status()?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use httpmock::{Method::GET, MockServer};
+    use httpmock::{Method::{GET, POST}, MockServer};
     use rust_decimal::dec;
 
     use super::*;
@@ -85,6 +92,46 @@ mod tests {
         let client = ShoppingListClient::build(&server.base_url()).unwrap();
 
         let result = client.list_items().await;
+
+        assert!(result.is_err());
+
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_add_item_success(){
+        let server = MockServer::start();
+
+        let mock = server.mock(|when, then| {
+            when.method(POST).path("/shopping/items");
+            then.status(204);
+        });
+
+        let test_item = CreateItem::new("item", dec!(10.99), 1);
+
+        let client = ShoppingListClient::build(&server.base_url()).unwrap();
+
+        let result = client.add_item(test_item).await;
+
+        assert!(result.is_ok());
+
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_add_item_returns_err_on_500(){
+        let server = MockServer::start();
+
+        let mock = server.mock(|when, then| {
+            when.method(POST).path("/shopping/items");
+            then.status(500);
+        });
+
+        let test_item = CreateItem::new("item", dec!(10.99), 1);
+
+        let client = ShoppingListClient::build(&server.base_url()).unwrap();
+
+        let result = client.add_item(test_item).await;
 
         assert!(result.is_err());
 

@@ -1,6 +1,11 @@
 use std::sync::Arc;
 
-use api::{config::Config, create_app, repositories::FakeRepo, state::AppState};
+use api::{
+    config::Config,
+    create_app,
+    repositories::{FakeRepo, FileBackedStore},
+    state::AppState,
+};
 use tokio::signal;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -12,7 +17,7 @@ async fn main() {
         .init();
 
     let config = Config::from_env();
-    let repo = Arc::new(FakeRepo);
+    let repo = Arc::new(FileBackedStore::new(&config.store_path).await);
     let state = AppState::new(config.clone(), repo);
 
     let app = create_app(state);

@@ -27,3 +27,20 @@ impl Item {
         }
     }
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct CreateItem {
+    pub name: String,
+    pub price: Decimal,
+    pub quantity: i32,
+}
+
+impl CreateItem {
+    pub fn new(name: impl Into<String>, price: Decimal, quantity: i32) -> Self {
+        Self {
+            name: name.into(),
+            price,
+            quantity,
+        }
+    }
+}
