@@ -35,16 +35,18 @@ pub async fn handle_command<R: ShoppingListRepository>(
             repo.update_item(item_id, updated).await?;
             let items = repo.list_items().await?;
             Ok(Some(Box::new(MarkedItemPage::new(items)) as Box<dyn Page>))
-        },
+        }
         ShoppingCommands::Reorder { item_id, order } => {
             let updated = UpdateItem::ItemOrder { item_order: order };
             repo.update_item(item_id, updated).await?;
             let items = repo.list_items().await?;
             Ok(Some(Box::new(OrderItemPage::new(items)) as Box<dyn Page>))
-        },
-        ShoppingCommands::Total => {
+        }
+        ShoppingCommands::Total { limit } => {
             let items = repo.list_items().await?;
-            Ok(Some(Box::new(TotalsPage::new(items)) as Box<dyn Page>))
+            Ok(Some(
+                Box::new(TotalsPage::new(items, limit)) as Box<dyn Page>
+            ))
         }
     }
 }

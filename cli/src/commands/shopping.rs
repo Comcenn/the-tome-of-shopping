@@ -25,7 +25,10 @@ pub enum ShoppingCommands {
     },
     Reorder {
         item_id: i32,
-        order: i32
+        order: i32,
     },
-    Total
+    Total {
+        #[arg(long)]
+        limit: Option<Decimal>,
+    },
 }

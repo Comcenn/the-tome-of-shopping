@@ -155,10 +155,10 @@ impl ShoppingListRepository for FileBackedStore {
 
                 if let Some(other) = items
                     .iter_mut()
-                    .find(|item| item.item_order == item_order && item.id != item_id){
-                        other.item_order = old_order;
-                    }
-    
+                    .find(|item| item.item_order == item_order && item.id != item_id)
+                {
+                    other.item_order = old_order;
+                }
             }
         }
 

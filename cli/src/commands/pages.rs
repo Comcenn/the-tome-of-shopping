@@ -15,12 +15,7 @@ fn render_items(header: &str, items: &[Item]) -> String {
     for item in &items {
         out.push_str(&format!(
             "{}|{}|{}|{}|{}|{}\n",
-            item.id,
-            item.name,
-            item.price,
-            item.quantity,
-            item.item_order,
-            item.picked_up
+            item.id, item.name, item.price, item.quantity, item.item_order, item.picked_up
         ));
     }
 
@@ -134,11 +129,12 @@ impl Page for OrderItemPage {
 
 pub struct TotalsPage {
     pub items: Vec<Item>,
+    pub limit: Option<Decimal>,
 }
 
 impl TotalsPage {
-    pub fn new(items: Vec<Item>) -> Self {
-        Self { items }
+    pub fn new(items: Vec<Item>, limit: Option<Decimal>) -> Self {
+        Self { items, limit }
     }
 }
 
@@ -146,19 +142,25 @@ impl Page for TotalsPage {
     fn render(&self) -> String {
         let mut out = String::new();
         let mut grand_total = Decimal::new(0, 2);
-        out.push_str("==============Totals=============");
+        out.push_str("\n==============Totals=============\n");
         out.push_str("Item|SubTotal(£)\n");
         for item in &self.items {
             let subtotal = (Decimal::from(item.quantity) * item.price).round_dp(2);
             grand_total += subtotal;
-            out.push_str(&format!(
-                "{}|{}\n",
-                item.name,
-                subtotal,
-            ));
+            out.push_str(&format!("{}|{}\n", item.name, subtotal,));
         }
         out.push_str("=================================\n");
         out.push_str(&format!("Total: {}\n", grand_total));
+
+        if let Some(limit) = self.limit {
+            if grand_total > limit {
+                out.push_str(&format!(
+                    "\n* ALERT: Total (£{}) exceeds your limit (£{})! *\n\n",
+                    grand_total, limit
+                ));
+            }
+        }
+
         out.push_str("==========End of Totals==========\n");
 
         out
