@@ -25,8 +25,8 @@ pub async fn handle_command<R: ShoppingListRepository>(
             let items = repo.list_items().await?;
             Ok(Some(Box::new(AddItemPage::new(items)) as Box<dyn Page>))
         }
-        ShoppingCommands::Remove { item_id } => {
-            repo.remove_item(item_id).await?;
+        ShoppingCommands::Remove { item_id, quantity } => {
+            repo.remove_item(item_id, quantity).await?;
             let items = repo.list_items().await?;
             Ok(Some(Box::new(RemoveItemPage::new(items)) as Box<dyn Page>))
         }

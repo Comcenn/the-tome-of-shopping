@@ -16,5 +16,6 @@ pub enum ShoppingCommands {
     },
     Remove {
         item_id: i32,
+        quantity: i32
     },
 }

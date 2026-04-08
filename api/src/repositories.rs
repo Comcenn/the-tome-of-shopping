@@ -24,7 +24,7 @@ impl ShoppingListRepository for FakeRepo {
         Ok(())
     }
 
-    async fn remove_item(&self, _item_id: i32) -> anyhow::Result<()> {
+    async fn remove_item(&self, _item_id: i32, _quantity: i32) -> anyhow::Result<()> {
         Ok(())
     }
 }
@@ -102,13 +102,12 @@ impl ShoppingListRepository for FileBackedStore {
     }
 
     async fn list_items(&self) -> anyhow::Result<Vec<Item>> {
-        // Always load fresh state
         let fresh = self.load_fresh().await;
 
         Ok(fresh)
     }
 
-    async fn remove_item(&self, item_id: i32) -> anyhow::Result<()> {
+    async fn remove_item(&self, item_id: i32, quantity: i32) -> anyhow::Result<()> {
         let mut fresh = self.load_fresh().await;
 
         let index = fresh
@@ -118,7 +117,11 @@ impl ShoppingListRepository for FileBackedStore {
                 TomeError::new(format!("cannot find item with 'id' of '{}'", item_id))
             })?;
 
-        fresh.remove(index);
+        if fresh[index].quantity > quantity {
+            fresh[index].quantity -= quantity;
+        } else {
+            fresh.remove(index);
+        }
 
         self.persist(&fresh).await;
 
@@ -238,7 +241,7 @@ mod tests {
             .await
             .unwrap();
         // item ids match the number passed into 'sample_item()'
-        let result = store.remove_item(10).await;
+        let result = store.remove_item(10, 1).await;
         assert!(result.is_ok());
 
         let items = store.list_items().await.unwrap();

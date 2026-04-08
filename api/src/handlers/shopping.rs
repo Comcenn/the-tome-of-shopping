@@ -3,7 +3,7 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
 };
-use shared::{CreateItem, Item, ShoppingListRepository};
+use shared::{CreateItem, Item, ShoppingListRepository, item::RemoveItem};
 
 use crate::{
     controllers::shopping_list::ShoppingListController,
@@ -39,13 +39,14 @@ where
 pub async fn remove_item_handler<R>(
     State(state): State<AppState<R>>,
     Path(item_id): Path<i32>,
+    Json(payload): Json<RemoveItem>
 ) -> Result<StatusCode>
 where
     R: ShoppingListRepository + Clone + Send + Sync + 'static,
 {
     let controller = ShoppingListController::new(state.repo.clone());
     controller
-        .remove_item(item_id)
+        .remove_item(item_id, payload.quantity)
         .await
         .map_err(|e| ApiError {
             message: e.to_string(),
@@ -185,11 +186,15 @@ mod tests {
         let state = AppState::new(Default::default(), repo.clone());
         let app = create_app(state);
 
+        let payload = serde_json::json!({
+            "quantity": 1
+        });
+
         let response = app
             .oneshot(
                 Request::delete("/shopping/items/1")
                     .header("content-type", "application/json")
-                    .body(Body::empty())
+                    .body(payload.to_string())
                     .unwrap(),
             )
             .await

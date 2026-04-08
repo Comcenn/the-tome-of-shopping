@@ -44,3 +44,16 @@ impl CreateItem {
         }
     }
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct RemoveItem {
+    pub quantity: i32,
+}
+
+impl RemoveItem {
+    pub fn new(quantity: i32) -> Self {
+        Self {
+            quantity,
+        }
+    }
+}

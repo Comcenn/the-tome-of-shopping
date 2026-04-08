@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use reqwest::Client;
-use shared::{CreateItem, Item, ShoppingListRepository};
+use shared::{CreateItem, Item, ShoppingListRepository, item::RemoveItem};
 use url::Url;
 
 pub struct ShoppingListClient {
@@ -54,11 +54,13 @@ impl ShoppingListRepository for ShoppingListClient {
         Ok(())
     }
 
-    async fn remove_item(&self, item_id: i32) -> anyhow::Result<()> {
+    async fn remove_item(&self, item_id: i32, quantity: i32) -> anyhow::Result<()> {
         let url = self.base_url.join(&format!("shopping/items/{}", item_id))?;
+        let payload = RemoveItem::new(quantity);
 
         self.web_client
             .delete(url)
+            .json(&payload)
             .send()
             .await?
             .error_for_status()?;
@@ -169,7 +171,7 @@ mod tests {
 
         let client = ShoppingListClient::build(&server.base_url()).unwrap();
 
-        let result = client.remove_item(11).await;
+        let result = client.remove_item(11, 1).await;
 
         assert!(result.is_ok());
 
@@ -187,7 +189,7 @@ mod tests {
 
         let client = ShoppingListClient::build(&server.base_url()).unwrap();
 
-        let result = client.remove_item(11).await;
+        let result = client.remove_item(11, 1).await;
 
         assert!(result.is_err());
 

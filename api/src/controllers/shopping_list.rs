@@ -26,8 +26,8 @@ where
         Ok(())
     }
 
-    pub async fn remove_item(&self, item_id: i32) -> anyhow::Result<()> {
-        self.repo.remove_item(item_id).await?;
+    pub async fn remove_item(&self, item_id: i32, quantity: i32) -> anyhow::Result<()> {
+        self.repo.remove_item(item_id, quantity).await?;
         Ok(())
     }
 }
