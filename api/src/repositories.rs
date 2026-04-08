@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use fs2::FileExt;
 use rust_decimal::dec;
 use shared::{CreateItem, Item, ShoppingListRepository, TomeError};
-use tokio::sync::RwLock;
+
 
 #[derive(Clone)]
 pub struct FakeRepo;
@@ -29,10 +29,10 @@ impl ShoppingListRepository for FakeRepo {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct FileBackedStore {
     path: PathBuf,
     lock_path: PathBuf,
-    items: RwLock<Vec<Item>>,
 }
 
 impl FileBackedStore {
@@ -43,16 +43,9 @@ impl FileBackedStore {
         // Ensure lock file exists
         let _ = File::create(&lock_path);
 
-        // Load initial items
-        let items = match tokio::fs::read(&path).await {
-            std::result::Result::Ok(bytes) => serde_json::from_slice(&bytes).unwrap_or_default(),
-            Err(_) => Vec::new(),
-        };
-
         Self {
             path,
             lock_path,
-            items: RwLock::new(items),
         }
     }
 
@@ -85,20 +78,6 @@ impl FileBackedStore {
     }
 }
 
-impl Clone for FileBackedStore {
-    fn clone(&self) -> Self {
-        let items = {
-            let guard = self.items.blocking_read();
-            guard.clone()
-        };
-
-        Self {
-            path: self.path.clone(),
-            lock_path: self.lock_path.clone(),
-            items: RwLock::new(items),
-        }
-    }
-}
 
 #[async_trait]
 impl ShoppingListRepository for FileBackedStore {
@@ -117,12 +96,7 @@ impl ShoppingListRepository for FileBackedStore {
             items.push(new_item);
         }
 
-        // Persist atomically
         self.persist(&items).await;
-
-        // Update in-memory cache
-        let mut cache = self.items.write().await;
-        *cache = items;
 
         Ok(())
     }
@@ -130,10 +104,6 @@ impl ShoppingListRepository for FileBackedStore {
     async fn list_items(&self) -> anyhow::Result<Vec<Item>> {
         // Always load fresh state
         let fresh = self.load_fresh().await;
-
-        // Update cache
-        let mut cache = self.items.write().await;
-        *cache = fresh.clone();
 
         Ok(fresh)
     }
@@ -151,9 +121,6 @@ impl ShoppingListRepository for FileBackedStore {
         fresh.remove(index);
 
         self.persist(&fresh).await;
-
-        let mut cache = self.items.write().await;
-        *cache = fresh;
 
         Ok(())
     }
@@ -219,7 +186,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn add_item_persists_and_updates_cache() {
+    async fn add_item_persists_new_item() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("store.json");
 
