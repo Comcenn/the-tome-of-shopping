@@ -26,5 +26,6 @@ pub enum ShoppingCommands {
     Reorder {
         item_id: i32,
         order: i32
-    }
+    },
+    Total
 }

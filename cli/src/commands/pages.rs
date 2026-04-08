@@ -1,3 +1,4 @@
+use rust_decimal::Decimal;
 use shared::{Item, Page};
 
 /// Shared helper to render any page of items.
@@ -124,5 +125,42 @@ impl OrderItemPage {
 impl Page for OrderItemPage {
     fn render(&self) -> String {
         render_items("\n========Updated Shopping List========", &self.items)
+    }
+}
+
+//
+// TOTALS PAGE
+//
+
+pub struct TotalsPage {
+    pub items: Vec<Item>,
+}
+
+impl TotalsPage {
+    pub fn new(items: Vec<Item>) -> Self {
+        Self { items }
+    }
+}
+
+impl Page for TotalsPage {
+    fn render(&self) -> String {
+        let mut out = String::new();
+        let mut grand_total = Decimal::new(0, 2);
+        out.push_str("==============Totals=============");
+        out.push_str("Item|SubTotal(£)\n");
+        for item in &self.items {
+            let subtotal = (Decimal::from(item.quantity) * item.price).round_dp(2);
+            grand_total += subtotal;
+            out.push_str(&format!(
+                "{}|{}\n",
+                item.name,
+                subtotal,
+            ));
+        }
+        out.push_str("=================================\n");
+        out.push_str(&format!("Total: {}\n", grand_total));
+        out.push_str("==========End of Totals==========\n");
+
+        out
     }
 }

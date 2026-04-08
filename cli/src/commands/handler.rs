@@ -2,7 +2,7 @@ use shared::{CreateItem, Page, ShoppingListRepository, item::UpdateItem};
 
 use crate::commands::{
     cli::Cli,
-    pages::{AddItemPage, ListPage, MarkedItemPage, OrderItemPage, RemoveItemPage},
+    pages::{AddItemPage, ListPage, MarkedItemPage, OrderItemPage, RemoveItemPage, TotalsPage},
     shopping::ShoppingCommands,
 };
 
@@ -41,6 +41,10 @@ pub async fn handle_command<R: ShoppingListRepository>(
             repo.update_item(item_id, updated).await?;
             let items = repo.list_items().await?;
             Ok(Some(Box::new(OrderItemPage::new(items)) as Box<dyn Page>))
+        },
+        ShoppingCommands::Total => {
+            let items = repo.list_items().await?;
+            Ok(Some(Box::new(TotalsPage::new(items)) as Box<dyn Page>))
         }
     }
 }
