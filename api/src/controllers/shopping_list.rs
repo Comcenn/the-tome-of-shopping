@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use shared::{CreateItem, Item, ShoppingListRepository};
+use shared::{CreateItem, Item, ShoppingListRepository, item::UpdateItem};
 
 pub struct ShoppingListController<R>
 where
@@ -28,6 +28,11 @@ where
 
     pub async fn remove_item(&self, item_id: i32, quantity: i32) -> anyhow::Result<()> {
         self.repo.remove_item(item_id, quantity).await?;
+        Ok(())
+    }
+
+    pub async fn update_item(&self, item_id: i32, item: UpdateItem) -> anyhow::Result<()> {
+        self.repo.update_item(item_id, item).await?;
         Ok(())
     }
 }

@@ -2,7 +2,10 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use reqwest::Client;
-use shared::{CreateItem, Item, ShoppingListRepository, item::RemoveItem};
+use shared::{
+    CreateItem, Item, ShoppingListRepository,
+    item::{RemoveItem, UpdateItem},
+};
 use url::Url;
 
 pub struct ShoppingListClient {
@@ -67,12 +70,25 @@ impl ShoppingListRepository for ShoppingListClient {
 
         Ok(())
     }
+
+    async fn update_item(&self, item_id: i32, item: UpdateItem) -> anyhow::Result<()> {
+        let url = self.base_url.join(&format!("shopping/items/{}", item_id))?;
+
+        self.web_client
+            .patch(url)
+            .json(&item)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use httpmock::{
-        Method::{DELETE, GET, POST},
+        Method::{DELETE, GET, PATCH, POST},
         MockServer,
     };
     use rust_decimal::dec;
@@ -84,8 +100,8 @@ mod tests {
         let server = MockServer::start();
 
         let items = vec![
-            Item::new(1, 1, "Milk", dec!(2.50), 1),
-            Item::new(2, 2, "Bread", dec!(4.99), 1),
+            Item::new(1, 1, "Milk", dec!(2.50), 1, false),
+            Item::new(2, 2, "Bread", dec!(4.99), 1, false),
         ];
 
         let mock = server.mock(|when, then| {
@@ -190,6 +206,46 @@ mod tests {
         let client = ShoppingListClient::build(&server.base_url()).unwrap();
 
         let result = client.remove_item(11, 1).await;
+
+        assert!(result.is_err());
+
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_update_item_success() {
+        let server = MockServer::start();
+
+        let mock = server.mock(|when, then| {
+            when.method(PATCH).path("/shopping/items/11");
+            then.status(204);
+        });
+
+        let update_item = UpdateItem::new(true);
+
+        let client = ShoppingListClient::build(&server.base_url()).unwrap();
+
+        let result = client.update_item(11, update_item).await;
+
+        assert!(result.is_ok());
+
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_update_item_returns_err_on_500() {
+        let server = MockServer::start();
+
+        let mock = server.mock(|when, then| {
+            when.method(PATCH).path("/shopping/items/11");
+            then.status(500);
+        });
+
+        let update_item = UpdateItem::new(true);
+
+        let client = ShoppingListClient::build(&server.base_url()).unwrap();
+
+        let result = client.update_item(11, update_item).await;
 
         assert!(result.is_err());
 

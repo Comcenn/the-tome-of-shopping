@@ -41,11 +41,11 @@ impl Page for AddItemPage {
     fn render(&self) -> String {
         let mut out = String::new();
         out.push_str("\n========Updated Shopping List========\n");
-        out.push_str("Id|Name|Price|Quantity|Order\n");
+        out.push_str("Id|Name|Price|Quantity|Order|Picked Up\n");
         for item in &self.items {
             out.push_str(&format!(
-                "{}|{}|{}|{}|{}\n",
-                item.id, item.name, item.price, item.quantity, item.item_order
+                "{}|{}|{}|{}|{}|{}\n",
+                item.id, item.name, item.price, item.quantity, item.item_order, item.picked_up
             ));
         }
         out.push_str("==========End of List==========\n");
@@ -68,11 +68,38 @@ impl Page for RemoveItemPage {
     fn render(&self) -> String {
         let mut out = String::new();
         out.push_str("\n========Updated Shopping List========\n");
-        out.push_str("Id|Name|Price|Quantity|Order\n");
+        out.push_str("Id|Name|Price|Quantity|Order|Picked Up\n");
         for item in &self.items {
             out.push_str(&format!(
-                "{}|{}|{}|{}|{}\n",
-                item.id, item.name, item.price, item.quantity, item.item_order
+                "{}|{}|{}|{}|{}|{}\n",
+                item.id, item.name, item.price, item.quantity, item.item_order, item.picked_up
+            ));
+        }
+        out.push_str("==========End of List==========\n");
+
+        out
+    }
+}
+
+pub struct MarkedItemPage {
+    pub items: Vec<Item>,
+}
+
+impl MarkedItemPage {
+    pub fn new(items: Vec<Item>) -> Self {
+        Self { items }
+    }
+}
+
+impl Page for MarkedItemPage {
+    fn render(&self) -> String {
+        let mut out = String::new();
+        out.push_str("\n========Updated Shopping List========\n");
+        out.push_str("Id|Name|Price|Quantity|Order|Picked Up\n");
+        for item in &self.items {
+            out.push_str(&format!(
+                "{}|{}|{}|{}|{}|{}\n",
+                item.id, item.name, item.price, item.quantity, item.item_order, item.picked_up
             ));
         }
         out.push_str("==========End of List==========\n");

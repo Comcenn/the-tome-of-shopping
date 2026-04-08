@@ -3,7 +3,10 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
 };
-use shared::{CreateItem, Item, ShoppingListRepository, item::RemoveItem};
+use shared::{
+    CreateItem, Item, ShoppingListRepository,
+    item::{RemoveItem, UpdateItem},
+};
 
 use crate::{
     controllers::shopping_list::ShoppingListController,
@@ -39,7 +42,7 @@ where
 pub async fn remove_item_handler<R>(
     State(state): State<AppState<R>>,
     Path(item_id): Path<i32>,
-    Json(payload): Json<RemoveItem>
+    Json(payload): Json<RemoveItem>,
 ) -> Result<StatusCode>
 where
     R: ShoppingListRepository + Clone + Send + Sync + 'static,
@@ -47,6 +50,24 @@ where
     let controller = ShoppingListController::new(state.repo.clone());
     controller
         .remove_item(item_id, payload.quantity)
+        .await
+        .map_err(|e| ApiError {
+            message: e.to_string(),
+        })?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn update_item_handler<R>(
+    State(state): State<AppState<R>>,
+    Path(item_id): Path<i32>,
+    Json(payload): Json<UpdateItem>,
+) -> Result<StatusCode>
+where
+    R: ShoppingListRepository + Clone + Send + Sync + 'static,
+{
+    let controller = ShoppingListController::new(state.repo.clone());
+    controller
+        .update_item(item_id, payload)
         .await
         .map_err(|e| ApiError {
             message: e.to_string(),
@@ -193,6 +214,30 @@ mod tests {
         let response = app
             .oneshot(
                 Request::delete("/shopping/items/1")
+                    .header("content-type", "application/json")
+                    .body(payload.to_string())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    }
+
+    #[tokio::test]
+    async fn update_item_calls_repository() {
+        // Use FakeRepo which always returns Ok(()). We just verify the handler succeeds.
+        let repo = Arc::new(FakeRepo);
+        let state = AppState::new(Default::default(), repo.clone());
+        let app = create_app(state);
+
+        let payload = serde_json::json!({
+            "picked_up": true
+        });
+
+        let response = app
+            .oneshot(
+                Request::patch("/shopping/items/1")
                     .header("content-type", "application/json")
                     .body(payload.to_string())
                     .unwrap(),

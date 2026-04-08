@@ -4,8 +4,7 @@ use anyhow::Ok;
 use async_trait::async_trait;
 use fs2::FileExt;
 use rust_decimal::dec;
-use shared::{CreateItem, Item, ShoppingListRepository, TomeError};
-
+use shared::{CreateItem, Item, ShoppingListRepository, TomeError, item::UpdateItem};
 
 #[derive(Clone)]
 pub struct FakeRepo;
@@ -14,9 +13,9 @@ pub struct FakeRepo;
 impl ShoppingListRepository for FakeRepo {
     async fn list_items(&self) -> anyhow::Result<Vec<Item>> {
         Ok(vec![
-            Item::new(1, 1, "Milk", dec!(1.20), 1),
-            Item::new(2, 2, "Bread", dec!(0.95), 1),
-            Item::new(3, 3, "Eggs", dec!(2.50), 1),
+            Item::new(1, 1, "Milk", dec!(1.20), 1, false),
+            Item::new(2, 2, "Bread", dec!(0.95), 1, false),
+            Item::new(3, 3, "Eggs", dec!(2.50), 1, false),
         ])
     }
 
@@ -25,6 +24,10 @@ impl ShoppingListRepository for FakeRepo {
     }
 
     async fn remove_item(&self, _item_id: i32, _quantity: i32) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    async fn update_item(&self, _item_id: i32, _item: UpdateItem) -> anyhow::Result<()> {
         Ok(())
     }
 }
@@ -43,10 +46,7 @@ impl FileBackedStore {
         // Ensure lock file exists
         let _ = File::create(&lock_path);
 
-        Self {
-            path,
-            lock_path,
-        }
+        Self { path, lock_path }
     }
 
     /// Acquire exclusive lock, read file fresh, return Vec<Item>
@@ -78,7 +78,6 @@ impl FileBackedStore {
     }
 }
 
-
 #[async_trait]
 impl ShoppingListRepository for FileBackedStore {
     async fn add_item(&self, item: CreateItem) -> anyhow::Result<()> {
@@ -91,7 +90,14 @@ impl ShoppingListRepository for FileBackedStore {
             let next_id = items.iter().map(|i| i.id).max().unwrap_or(0) + 1;
             let next_order = items.iter().map(|i| i.item_order).max().unwrap_or(0) + 1;
 
-            let new_item = Item::new(next_id, next_order, item.name, item.price, item.quantity);
+            let new_item = Item::new(
+                next_id,
+                next_order,
+                item.name,
+                item.price,
+                item.quantity,
+                false,
+            );
 
             items.push(new_item);
         }
@@ -127,6 +133,22 @@ impl ShoppingListRepository for FileBackedStore {
 
         Ok(())
     }
+
+    async fn update_item(&self, item_id: i32, item: UpdateItem) -> anyhow::Result<()> {
+        let mut items = self.load_fresh().await;
+
+        if let Some(existing) = items.iter_mut().find(|item| item.id == item_id) {
+            existing.picked_up = item.picked_up;
+        } else {
+            return Err(
+                TomeError::new(format!("cannot find item with 'id' of '{}'", item_id)).into(),
+            );
+        }
+
+        self.persist(&items).await;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -148,7 +170,7 @@ mod tests {
     }
 
     fn sample_item(id: i32) -> Item {
-        Item::new(id, id, format!("Item{}", id), dec!(12.30), 1)
+        Item::new(id, id, format!("Item{}", id), dec!(12.30), 1, false)
     }
 
     fn sample_create_item(id: i32) -> CreateItem {
@@ -246,7 +268,34 @@ mod tests {
 
         let items = store.list_items().await.unwrap();
 
-        assert_eq!(items.len(), 1)
+        assert_eq!(items.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn update_item_updates_item() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("store.json");
+
+        let store = FileBackedStore::new(&path).await;
+
+        // Write directly to disk, bypassing cache
+        let injected = vec![sample_item(99), sample_item(10)];
+        fs::write(&path, serde_json::to_vec(&injected).unwrap())
+            .await
+            .unwrap();
+
+        let update_item = UpdateItem::new(true);
+        // item ids match the number passed into 'sample_item()'
+        let result = store.update_item(10, update_item).await;
+        assert!(result.is_ok());
+
+        let items = store.list_items().await.unwrap();
+
+        assert_eq!(items.len(), 2);
+        assert_eq!(
+            items.iter().find(|item| item.id == 10).unwrap().picked_up,
+            true
+        );
     }
 
     #[tokio::test]

@@ -8,6 +8,7 @@ pub struct Item {
     pub name: String,
     pub price: Decimal,
     pub quantity: i32,
+    pub picked_up: bool,
 }
 
 impl Item {
@@ -17,6 +18,7 @@ impl Item {
         name: impl Into<String>,
         price: Decimal,
         quantity: i32,
+        picked_up: bool,
     ) -> Self {
         Self {
             id,
@@ -24,6 +26,7 @@ impl Item {
             name: name.into(),
             price,
             quantity,
+            picked_up,
         }
     }
 }
@@ -52,8 +55,17 @@ pub struct RemoveItem {
 
 impl RemoveItem {
     pub fn new(quantity: i32) -> Self {
-        Self {
-            quantity,
-        }
+        Self { quantity }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct UpdateItem {
+    pub picked_up: bool,
+}
+
+impl UpdateItem {
+    pub fn new(picked_up: bool) -> Self {
+        Self { picked_up }
     }
 }

@@ -16,6 +16,11 @@ pub enum ShoppingCommands {
     },
     Remove {
         item_id: i32,
-        quantity: i32
+        quantity: i32,
+    },
+    Mark {
+        item_id: i32,
+        #[arg(long)]
+        ticked: bool,
     },
 }
