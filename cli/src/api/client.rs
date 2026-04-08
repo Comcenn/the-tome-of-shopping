@@ -221,7 +221,7 @@ mod tests {
             then.status(204);
         });
 
-        let update_item = UpdateItem::new(true);
+        let update_item = UpdateItem::PickedUp { picked_up: true };
 
         let client = ShoppingListClient::build(&server.base_url()).unwrap();
 
@@ -241,7 +241,7 @@ mod tests {
             then.status(500);
         });
 
-        let update_item = UpdateItem::new(true);
+        let update_item = UpdateItem::PickedUp { picked_up: true };
 
         let client = ShoppingListClient::build(&server.base_url()).unwrap();
 

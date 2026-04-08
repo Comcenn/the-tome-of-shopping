@@ -137,12 +137,29 @@ impl ShoppingListRepository for FileBackedStore {
     async fn update_item(&self, item_id: i32, item: UpdateItem) -> anyhow::Result<()> {
         let mut items = self.load_fresh().await;
 
-        if let Some(existing) = items.iter_mut().find(|item| item.id == item_id) {
-            existing.picked_up = item.picked_up;
-        } else {
-            return Err(
-                TomeError::new(format!("cannot find item with 'id' of '{}'", item_id)).into(),
-            );
+        let index = items
+            .iter()
+            .position(|item| item.id == item_id)
+            .ok_or_else(|| {
+                TomeError::new(format!("cannot find item with 'id' of '{}'", item_id))
+            })?;
+
+        match item {
+            UpdateItem::PickedUp { picked_up } => {
+                items[index].picked_up = picked_up;
+            }
+            UpdateItem::ItemOrder { item_order } => {
+                let item_order = item_order.max(1);
+                let old_order = items[index].item_order;
+                items[index].item_order = item_order;
+
+                if let Some(other) = items
+                    .iter_mut()
+                    .find(|item| item.item_order == item_order && item.id != item_id){
+                        other.item_order = old_order;
+                    }
+    
+            }
         }
 
         self.persist(&items).await;
@@ -272,7 +289,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_item_updates_item() {
+    async fn update_item_updates_item_picked_up() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("store.json");
 
@@ -284,7 +301,7 @@ mod tests {
             .await
             .unwrap();
 
-        let update_item = UpdateItem::new(true);
+        let update_item = UpdateItem::PickedUp { picked_up: true };
         // item ids match the number passed into 'sample_item()'
         let result = store.update_item(10, update_item).await;
         assert!(result.is_ok());
@@ -295,6 +312,37 @@ mod tests {
         assert_eq!(
             items.iter().find(|item| item.id == 10).unwrap().picked_up,
             true
+        );
+    }
+
+    #[tokio::test]
+    async fn update_item_updates_item_item_order() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("store.json");
+
+        let store = FileBackedStore::new(&path).await;
+
+        // Write directly to disk, bypassing cache
+        let injected = vec![sample_item(99), sample_item(10)];
+        fs::write(&path, serde_json::to_vec(&injected).unwrap())
+            .await
+            .unwrap();
+
+        let update_item = UpdateItem::ItemOrder { item_order: 99 };
+        // item ids match the number passed into 'sample_item()'
+        let result = store.update_item(10, update_item).await;
+        assert!(result.is_ok());
+
+        let items = store.list_items().await.unwrap();
+
+        assert_eq!(items.len(), 2);
+        assert_eq!(
+            items.iter().find(|item| item.id == 10).unwrap().item_order,
+            99
+        );
+        assert_eq!(
+            items.iter().find(|item| item.id == 99).unwrap().item_order,
+            10
         );
     }
 

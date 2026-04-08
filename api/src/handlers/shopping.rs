@@ -225,14 +225,40 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_item_calls_repository() {
+    async fn update_item_calls_repository_with_picked_up() {
         // Use FakeRepo which always returns Ok(()). We just verify the handler succeeds.
         let repo = Arc::new(FakeRepo);
         let state = AppState::new(Default::default(), repo.clone());
         let app = create_app(state);
 
         let payload = serde_json::json!({
+            "type": "picked_up",
             "picked_up": true
+        });
+
+        let response = app
+            .oneshot(
+                Request::patch("/shopping/items/1")
+                    .header("content-type", "application/json")
+                    .body(payload.to_string())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    }
+
+    #[tokio::test]
+    async fn update_item_calls_repository_with_item_order() {
+        // Use FakeRepo which always returns Ok(()). We just verify the handler succeeds.
+        let repo = Arc::new(FakeRepo);
+        let state = AppState::new(Default::default(), repo.clone());
+        let app = create_app(state);
+
+        let payload = serde_json::json!({
+            "type": "item_order",
+            "item_order": 3
         });
 
         let response = app

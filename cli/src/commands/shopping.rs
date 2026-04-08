@@ -23,4 +23,8 @@ pub enum ShoppingCommands {
         #[arg(long)]
         ticked: bool,
     },
+    Reorder {
+        item_id: i32,
+        order: i32
+    }
 }

@@ -60,12 +60,8 @@ impl RemoveItem {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub struct UpdateItem {
-    pub picked_up: bool,
-}
-
-impl UpdateItem {
-    pub fn new(picked_up: bool) -> Self {
-        Self { picked_up }
-    }
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum UpdateItem {
+    PickedUp { picked_up: bool },
+    ItemOrder { item_order: i32 },
 }
