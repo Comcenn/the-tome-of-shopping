@@ -1,10 +1,12 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use reqwest::Client;
+use base64::Engine;
+use reqwest::{Client, header};
 use shared::{
     CreateItem, Item, ShoppingListRepository,
     item::{RemoveItem, UpdateItem},
+    user::UserId,
 };
 use url::Url;
 
@@ -26,16 +28,23 @@ impl ShoppingListClient {
         let base_url = Url::parse(host)?;
         Ok(ShoppingListClient::new(client, base_url))
     }
+
+    fn auth_header(username: &UserId, password: &str) -> String {
+        let creds = format!("{}:{}", username.0, password);
+        let encoded = base64::engine::general_purpose::STANDARD.encode(creds);
+        format!("Basic {}", encoded)
+    }
 }
 
 #[async_trait]
 impl ShoppingListRepository for ShoppingListClient {
-    async fn list_items(&self) -> anyhow::Result<Vec<Item>> {
+    async fn list_items(&self, user: UserId, password: &str) -> anyhow::Result<Vec<Item>> {
         let url = self.base_url.join("shopping")?;
 
         let items = self
             .web_client
             .get(url)
+            .header(header::AUTHORIZATION, Self::auth_header(&user, password))
             .send()
             .await?
             .error_for_status()?
@@ -45,24 +54,33 @@ impl ShoppingListRepository for ShoppingListClient {
         Ok(items)
     }
 
-    async fn add_item(&self, item: CreateItem) -> anyhow::Result<()> {
+    async fn add_item(&self, item: CreateItem, user: UserId, password: &str) -> anyhow::Result<()> {
         let url = self.base_url.join("shopping/items")?;
 
         self.web_client
             .post(url)
+            .header(header::AUTHORIZATION, Self::auth_header(&user, password))
             .json(&item)
             .send()
             .await?
             .error_for_status()?;
+
         Ok(())
     }
 
-    async fn remove_item(&self, item_id: i32, quantity: i32) -> anyhow::Result<()> {
+    async fn remove_item(
+        &self,
+        item_id: i32,
+        quantity: i32,
+        user: UserId,
+        password: &str,
+    ) -> anyhow::Result<()> {
         let url = self.base_url.join(&format!("shopping/items/{}", item_id))?;
         let payload = RemoveItem::new(quantity);
 
         self.web_client
             .delete(url)
+            .header(header::AUTHORIZATION, Self::auth_header(&user, password))
             .json(&payload)
             .send()
             .await?
@@ -71,11 +89,18 @@ impl ShoppingListRepository for ShoppingListClient {
         Ok(())
     }
 
-    async fn update_item(&self, item_id: i32, item: UpdateItem) -> anyhow::Result<()> {
+    async fn update_item(
+        &self,
+        item_id: i32,
+        item: UpdateItem,
+        user: UserId,
+        password: &str,
+    ) -> anyhow::Result<()> {
         let url = self.base_url.join(&format!("shopping/items/{}", item_id))?;
 
         self.web_client
             .patch(url)
+            .header(header::AUTHORIZATION, Self::auth_header(&user, password))
             .json(&item)
             .send()
             .await?
@@ -87,13 +112,26 @@ impl ShoppingListRepository for ShoppingListClient {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use base64::Engine;
     use httpmock::{
         Method::{DELETE, GET, PATCH, POST},
         MockServer,
     };
     use rust_decimal::dec;
+    use shared::{CreateItem, Item, user::UserId};
 
-    use super::*;
+    fn auth_header(user: &str, pw: &str) -> String {
+        let encoded = base64::engine::general_purpose::STANDARD.encode(format!("{user}:{pw}"));
+        format!("Basic {encoded}")
+    }
+
+    const USER: &str = "alice";
+    const PW: &str = "pw";
+
+    // -----------------------------
+    // LIST ITEMS
+    // -----------------------------
 
     #[tokio::test]
     async fn test_list_items_success() {
@@ -105,16 +143,17 @@ mod tests {
         ];
 
         let mock = server.mock(|when, then| {
-            when.method(GET).path("/shopping");
+            when.method(GET)
+                .path("/shopping")
+                .header("Authorization", auth_header(USER, PW));
             then.status(200).json_body_obj(&items);
         });
 
         let client = ShoppingListClient::build(&server.base_url()).unwrap();
 
-        let result = client.list_items().await.unwrap();
+        let result = client.list_items(UserId(USER.into()), PW).await.unwrap();
 
         assert_eq!(result, items);
-
         mock.assert();
     }
 
@@ -123,25 +162,32 @@ mod tests {
         let server = MockServer::start();
 
         let mock = server.mock(|when, then| {
-            when.method(GET).path("/shopping");
+            when.method(GET)
+                .path("/shopping")
+                .header("Authorization", auth_header(USER, PW));
             then.status(404);
         });
 
         let client = ShoppingListClient::build(&server.base_url()).unwrap();
 
-        let result = client.list_items().await;
-
+        let result = client.list_items(UserId(USER.into()), PW).await;
         assert!(result.is_err());
 
         mock.assert();
     }
+
+    // -----------------------------
+    // ADD ITEM
+    // -----------------------------
 
     #[tokio::test]
     async fn test_add_item_success() {
         let server = MockServer::start();
 
         let mock = server.mock(|when, then| {
-            when.method(POST).path("/shopping/items");
+            when.method(POST)
+                .path("/shopping/items")
+                .header("Authorization", auth_header(USER, PW));
             then.status(204);
         });
 
@@ -149,8 +195,7 @@ mod tests {
 
         let client = ShoppingListClient::build(&server.base_url()).unwrap();
 
-        let result = client.add_item(test_item).await;
-
+        let result = client.add_item(test_item, UserId(USER.into()), PW).await;
         assert!(result.is_ok());
 
         mock.assert();
@@ -161,7 +206,9 @@ mod tests {
         let server = MockServer::start();
 
         let mock = server.mock(|when, then| {
-            when.method(POST).path("/shopping/items");
+            when.method(POST)
+                .path("/shopping/items")
+                .header("Authorization", auth_header(USER, PW));
             then.status(500);
         });
 
@@ -169,26 +216,30 @@ mod tests {
 
         let client = ShoppingListClient::build(&server.base_url()).unwrap();
 
-        let result = client.add_item(test_item).await;
-
+        let result = client.add_item(test_item, UserId(USER.into()), PW).await;
         assert!(result.is_err());
 
         mock.assert();
     }
+
+    // -----------------------------
+    // REMOVE ITEM
+    // -----------------------------
 
     #[tokio::test]
     async fn test_remove_item_success() {
         let server = MockServer::start();
 
         let mock = server.mock(|when, then| {
-            when.method(DELETE).path("/shopping/items/11");
+            when.method(DELETE)
+                .path("/shopping/items/11")
+                .header("Authorization", auth_header(USER, PW));
             then.status(204);
         });
 
         let client = ShoppingListClient::build(&server.base_url()).unwrap();
 
-        let result = client.remove_item(11, 1).await;
-
+        let result = client.remove_item(11, 1, UserId(USER.into()), PW).await;
         assert!(result.is_ok());
 
         mock.assert();
@@ -199,25 +250,32 @@ mod tests {
         let server = MockServer::start();
 
         let mock = server.mock(|when, then| {
-            when.method(DELETE).path("/shopping/items/11");
+            when.method(DELETE)
+                .path("/shopping/items/11")
+                .header("Authorization", auth_header(USER, PW));
             then.status(500);
         });
 
         let client = ShoppingListClient::build(&server.base_url()).unwrap();
 
-        let result = client.remove_item(11, 1).await;
-
+        let result = client.remove_item(11, 1, UserId(USER.into()), PW).await;
         assert!(result.is_err());
 
         mock.assert();
     }
+
+    // -----------------------------
+    // UPDATE ITEM
+    // -----------------------------
 
     #[tokio::test]
     async fn test_update_item_success() {
         let server = MockServer::start();
 
         let mock = server.mock(|when, then| {
-            when.method(PATCH).path("/shopping/items/11");
+            when.method(PATCH)
+                .path("/shopping/items/11")
+                .header("Authorization", auth_header(USER, PW));
             then.status(204);
         });
 
@@ -225,8 +283,9 @@ mod tests {
 
         let client = ShoppingListClient::build(&server.base_url()).unwrap();
 
-        let result = client.update_item(11, update_item).await;
-
+        let result = client
+            .update_item(11, update_item, UserId(USER.into()), PW)
+            .await;
         assert!(result.is_ok());
 
         mock.assert();
@@ -237,7 +296,9 @@ mod tests {
         let server = MockServer::start();
 
         let mock = server.mock(|when, then| {
-            when.method(PATCH).path("/shopping/items/11");
+            when.method(PATCH)
+                .path("/shopping/items/11")
+                .header("Authorization", auth_header(USER, PW));
             then.status(500);
         });
 
@@ -245,8 +306,9 @@ mod tests {
 
         let client = ShoppingListClient::build(&server.base_url()).unwrap();
 
-        let result = client.update_item(11, update_item).await;
-
+        let result = client
+            .update_item(11, update_item, UserId(USER.into()), PW)
+            .await;
         assert!(result.is_err());
 
         mock.assert();

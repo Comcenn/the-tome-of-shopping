@@ -8,3 +8,4 @@ anyhow = "1.0.102"
 async-trait = "0.1.89"
 rust_decimal = { version = "1.41.0", features = ["macros", "serde"] }
 serde = { version = "1.0.228", features = ["derive"] }
+tokio = "1.51.1"

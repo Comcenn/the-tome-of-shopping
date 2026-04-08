@@ -2,6 +2,7 @@ use tokio::sync::mpsc;
 
 pub mod api;
 pub mod commands;
+pub mod credentials;
 pub mod executor;
 pub mod interface;
 

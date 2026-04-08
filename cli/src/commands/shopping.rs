@@ -34,4 +34,10 @@ pub enum ShoppingCommands {
     Email {
         address: String,
     },
+    Login {
+        #[arg(long)]
+        username: String,
+        #[arg(long)]
+        password: String
+    }
 }

@@ -6,6 +6,7 @@ use state::AppState;
 pub mod config;
 pub mod controllers;
 pub mod errors;
+pub mod extractors;
 pub mod handlers;
 pub mod repositories;
 pub mod routes;

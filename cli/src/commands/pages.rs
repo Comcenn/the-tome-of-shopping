@@ -189,3 +189,27 @@ impl Page for SendEmailPage {
         out
     }
 }
+
+//
+// LOGGED IN PAGE
+//
+
+pub struct LoggedInPage {
+    pub username: String,
+}
+
+impl LoggedInPage {
+    pub fn new(username: String) -> Self {
+        Self { username }
+    }
+}
+
+impl Page for LoggedInPage {
+    fn render(&self) -> String {
+        let mut out = String::new();
+        out.push_str(&format!("\nLogged in as: {}\n", self.username));
+
+        out
+    }
+}
+

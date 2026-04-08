@@ -21,5 +21,4 @@ target
 #.idea/
 
 # API data persistance files
-store.json
-store.lock
+api_store

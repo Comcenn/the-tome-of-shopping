@@ -8,7 +8,7 @@ impl Config {
     pub fn from_env() -> Self {
         Self {
             addr: std::env::var("API_ADDR").unwrap_or("127.0.0.1:3000".into()),
-            store_path: std::env::var("API_STORE_PATH").unwrap_or("./store.json".into()),
+            store_path: std::env::var("API_STORE_PATH").unwrap_or("./api_store".into()),
         }
     }
 }

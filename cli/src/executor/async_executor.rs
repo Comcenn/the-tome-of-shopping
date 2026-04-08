@@ -4,12 +4,16 @@ use clap::Parser;
 use shared::{ShoppingListRepository, repository::EmailRepository};
 use tokio::sync::mpsc;
 
-use crate::commands::{cli::Cli, handler::handle_command};
+use crate::{
+    commands::{cli::Cli, handler::handle_command},
+    credentials::Credentials,
+};
 
 pub async fn run_async_executor<R, E>(
     mut rx: mpsc::Receiver<String>,
     api_client: &R,
     email_client: &E,
+    creds: &mut Credentials,
 ) -> anyhow::Result<()>
 where
     R: ShoppingListRepository,
@@ -24,7 +28,7 @@ where
         let args = std::iter::once("repl").chain(parts.iter().map(|part| part.as_str()));
         match Cli::try_parse_from(args) {
             Ok(cmd) => {
-                if let Some(page) = handle_command(api_client, email_client, cmd).await? {
+                if let Some(page) = handle_command(api_client, email_client, creds, cmd).await? {
                     println!("{}", page.render());
                     println!();
                 }
