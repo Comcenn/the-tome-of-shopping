@@ -31,4 +31,7 @@ pub enum ShoppingCommands {
         #[arg(long)]
         limit: Option<Decimal>,
     },
+    Email {
+        address: String,
+    },
 }

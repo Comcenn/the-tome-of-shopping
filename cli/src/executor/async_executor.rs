@@ -1,15 +1,20 @@
 use std::io::{self, Write};
 
 use clap::Parser;
-use shared::ShoppingListRepository;
+use shared::{ShoppingListRepository, repository::EmailRepository};
 use tokio::sync::mpsc;
 
 use crate::commands::{cli::Cli, handler::handle_command};
 
-pub async fn run_async_executor<R: ShoppingListRepository>(
+pub async fn run_async_executor<R, E>(
     mut rx: mpsc::Receiver<String>,
-    client: &R,
-) -> anyhow::Result<()> {
+    api_client: &R,
+    email_client: &E,
+) -> anyhow::Result<()>
+where
+    R: ShoppingListRepository,
+    E: EmailRepository,
+{
     // Print the first prompt
     print!("shopping-list> ");
     io::stdout().flush().unwrap();
@@ -19,7 +24,7 @@ pub async fn run_async_executor<R: ShoppingListRepository>(
         let args = std::iter::once("repl").chain(parts.iter().map(|part| part.as_str()));
         match Cli::try_parse_from(args) {
             Ok(cmd) => {
-                if let Some(page) = handle_command(client, cmd).await? {
+                if let Some(page) = handle_command(api_client, email_client, cmd).await? {
                     println!("{}", page.render());
                     println!();
                 }

@@ -1,1 +1,2 @@
-pub mod client;
+pub mod api_client;
+pub mod email_client;

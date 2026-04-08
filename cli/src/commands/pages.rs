@@ -166,3 +166,26 @@ impl Page for TotalsPage {
         out
     }
 }
+
+//
+// SEND EMAIL PAGE
+//
+
+pub struct SendEmailPage {
+    pub email: String,
+}
+
+impl SendEmailPage {
+    pub fn new(email: String) -> Self {
+        Self { email }
+    }
+}
+
+impl Page for SendEmailPage {
+    fn render(&self) -> String {
+        let mut out = String::new();
+        out.push_str(&format!("\nEmail successfully sent too: {}\n", self.email));
+
+        out
+    }
+}

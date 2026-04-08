@@ -1,3 +1,4 @@
+pub mod email;
 pub mod error;
 pub mod item;
 pub mod page;

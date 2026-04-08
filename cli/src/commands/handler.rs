@@ -1,15 +1,26 @@
-use shared::{CreateItem, Page, ShoppingListRepository, item::UpdateItem};
+use shared::{
+    CreateItem, Page, ShoppingListRepository, email::render_email, item::UpdateItem,
+    repository::EmailRepository,
+};
 
 use crate::commands::{
     cli::Cli,
-    pages::{AddItemPage, ListPage, MarkedItemPage, OrderItemPage, RemoveItemPage, TotalsPage},
+    pages::{
+        AddItemPage, ListPage, MarkedItemPage, OrderItemPage, RemoveItemPage, SendEmailPage,
+        TotalsPage,
+    },
     shopping::ShoppingCommands,
 };
 
-pub async fn handle_command<R: ShoppingListRepository>(
+pub async fn handle_command<R, E>(
     repo: &R,
+    email_repo: &E,
     cmd: Cli,
-) -> anyhow::Result<Option<Box<dyn Page>>> {
+) -> anyhow::Result<Option<Box<dyn Page>>>
+where
+    R: ShoppingListRepository,
+    E: EmailRepository,
+{
     match cmd.command {
         ShoppingCommands::List => {
             let items = repo.list_items().await?;
@@ -47,6 +58,13 @@ pub async fn handle_command<R: ShoppingListRepository>(
             Ok(Some(
                 Box::new(TotalsPage::new(items, limit)) as Box<dyn Page>
             ))
+        }
+        ShoppingCommands::Email { address } => {
+            let items = repo.list_items().await?;
+            let message_string = render_email(&items);
+            email_repo.send_email(&address, message_string).await?;
+
+            Ok(Some(Box::new(SendEmailPage::new(address)) as Box<dyn Page>))
         }
     }
 }

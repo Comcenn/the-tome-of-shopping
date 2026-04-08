@@ -15,3 +15,8 @@ pub trait ShoppingListRepository: Send + Sync {
 
     async fn update_item(&self, item_id: i32, item: UpdateItem) -> anyhow::Result<()>;
 }
+
+#[async_trait]
+pub trait EmailRepository: Send + Sync {
+    async fn send_email(&self, email: &str, message: String) -> anyhow::Result<()>;
+}
