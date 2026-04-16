@@ -2,9 +2,12 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
+use argon2::password_hash::SaltString;
+use argon2::{Argon2, PasswordHasher};
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD_NO_PAD;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use tokio::fs;
 
 use async_trait::async_trait;
@@ -38,13 +41,16 @@ struct UserMeta {
 fn generate_salt() -> String {
     let mut bytes = [0u8; 16];
     rand::rng().fill_bytes(&mut bytes);
-    hex::encode(bytes)
+    STANDARD_NO_PAD.encode(bytes)
 }
 
 fn hash_password(username: &str, password: &str, salt: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(format!("{username}:{password}:{salt}"));
-    let hash = hasher.finalize();
+    let hasher = Argon2::default();
+    let salt = SaltString::from_b64(salt).expect("Bad salt string");
+    let hash = hasher
+        .hash_password(format!("{username}:{password}").as_bytes(), &salt)
+        .expect("Could not hash")
+        .to_string();
     hex::encode(hash)
 }
 

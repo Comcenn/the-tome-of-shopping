@@ -1,9 +1,9 @@
 use cli::{
     api::{api_client::ShoppingListClient, email_client::EmailClient},
     channel,
+    credentials::{Credentials, prompt_for_credentials},
     executor::{async_executor::run_async_executor, create_runtime},
     interface::spawn_repl_thread,
-    credentials::{Credentials, prompt_for_credentials},
 };
 
 fn main() -> anyhow::Result<()> {

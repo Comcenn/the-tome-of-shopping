@@ -212,4 +212,3 @@ impl Page for LoggedInPage {
         out
     }
 }
-

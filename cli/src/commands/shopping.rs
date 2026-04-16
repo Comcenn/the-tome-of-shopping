@@ -38,6 +38,6 @@ pub enum ShoppingCommands {
         #[arg(long)]
         username: String,
         #[arg(long)]
-        password: String
-    }
+        password: String,
+    },
 }

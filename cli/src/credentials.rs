@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use shared::user::UserId;
-use std::{fs, path::PathBuf};
 use std::io::{self, Write};
+use std::{fs, path::PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Credentials {
@@ -11,16 +11,16 @@ pub struct Credentials {
 
 impl Credentials {
     pub fn load() -> anyhow::Result<Option<Self>> {
-    let path = Self::path();
+        let path = Self::path();
 
-    if !path.exists() {
-        return Ok(None);
+        if !path.exists() {
+            return Ok(None);
+        }
+
+        let content = std::fs::read_to_string(&path)?;
+        let creds: Credentials = toml::from_str(&content)?;
+        Ok(Some(creds))
     }
-
-    let content = std::fs::read_to_string(&path)?;
-    let creds: Credentials = toml::from_str(&content)?;
-    Ok(Some(creds))
-}
 
     pub fn save(&self) -> anyhow::Result<()> {
         let path = Self::path();
@@ -36,7 +36,6 @@ impl Credentials {
             .join("credentials.toml")
     }
 }
-
 
 pub fn prompt_for_credentials() -> anyhow::Result<Credentials> {
     print!("Username: ");

@@ -7,7 +7,8 @@ use crate::{
     commands::{
         cli::Cli,
         pages::{
-            AddItemPage, ListPage, LoggedInPage, MarkedItemPage, OrderItemPage, RemoveItemPage, SendEmailPage, TotalsPage
+            AddItemPage, ListPage, LoggedInPage, MarkedItemPage, OrderItemPage, RemoveItemPage,
+            SendEmailPage, TotalsPage,
         },
         shopping::ShoppingCommands,
     },

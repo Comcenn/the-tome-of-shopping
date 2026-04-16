@@ -25,6 +25,5 @@ pub fn repl_loop(tx: mpsc::Sender<String>) {
         } else {
             tx.blocking_send(line.to_string()).unwrap();
         }
-
     }
 }
